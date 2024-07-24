@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { set, SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 
 const validationSchema = z.object({
@@ -57,6 +57,7 @@ const SendPage = () => {
         break;
       }
     }
+    setLogs((prev) => [...prev, "All transactions is complete"]);
   };
 
   const handleAbort = () => {
