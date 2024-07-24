@@ -1,5 +1,9 @@
 "use server"
-import { getKeypairFromPrivateKey, PublicKey, sendSol, delay } from "@/utils/solanaUtils";
+import { HEADERS } from "@/utils/headers";
+import { doTransactions, getKeypairFromPrivateKey, PublicKey, sendSol } from "@/utils/solanaUtils";
+import { Keypair, Transaction } from "@solana/web3.js";
+import axios, { AxiosHeaderValue } from "axios";
+import moment from "moment";
 
 export const doTransaction = async (
   data: { 
@@ -26,8 +30,44 @@ export const doTransaction = async (
   }
 }
 
-export const stopTransaction = async (): Promise<{error?: string, success?: string}> => {
-  return {
-    success: 'All transactions stopped'
+export const dailyLogin = async (token: AxiosHeaderValue, keypair: Keypair) => {
+  try {
+    const { data } = await axios({
+      url: 'https://odyssey-api-beta.sonic.game/user/check-in/transaction',
+      method: 'GET',
+      headers: { ...HEADERS, Authorization: token },
+    });
+
+    const txBuffer = Buffer.from(data.data.hash, 'base64');
+    const tx = Transaction.from(txBuffer);
+    tx.partialSign(keypair);
+    const signature = await doTransactions(tx, keypair);
+
+    const response = await axios({
+      url: 'https://odyssey-api-beta.sonic.game/user/check-in',
+      method: 'POST',
+      headers: { ...HEADERS, Authorization: token },
+      data: {
+        hash: signature,
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.response.data.message === 'current account already checked in') {
+      console.log(
+        `[ ${moment().format('HH:mm:ss')} ] Error in daily login: ${
+          error.response.data.message
+        }`.red
+      );
+      return "Already claimed";
+    } else {
+      console.log(
+        `[ ${moment().format('HH:mm:ss')} ] Error claiming: ${
+          error.response.data.message
+        }`.red
+      );
+      return "Error claiming";
+    }
   }
 }
